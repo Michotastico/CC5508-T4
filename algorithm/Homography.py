@@ -61,16 +61,12 @@ class Homography:
         matrix_ans[2, 1] = array_x[7, 0]
         matrix_ans[2, 2] = 1
 
-        print matrix_a
-        print array_b
-        print array_x
-
         return matrix_ans
 
     def transform_image(self, interpolate="close"):
-        print self.image.shape
         height, width, layer = self.image.shape
-        new_image = np.zeros(self.image.shape)
+        new_image = self.image.copy()
+        new_image.fill(0)
         matrix_h = self.get_homography()
 
         if interpolate == "close":
@@ -78,28 +74,32 @@ class Homography:
         else:
             method = interpolate_bi_lineal
 
-        for x in range(height):
-            for y in range(width):
-                point = np.zeros((3, 1))
-                point[0, 0] = x
-                point[1, 0] = y
-                point[2, 0] = 1
-                new_point = np.dot(matrix_h, point)
-                new_point = [new_point[0, 0], new_point[1, 0]]
+        for y in range(height):
+            for x in range(width):
+                new_point = get_point([y, x], matrix_h)
                 new_point = method(new_point, self.image)
-                if x == 168 and y == 128:
-                    print point
-                    print new_point
-                if new_point[0] >= height or new_point[1] >= width:
+                if new_point[1] >= width or new_point[1] < 0 or new_point[0] >= height or new_point[0] < 0:
                     continue
-                for z in range(layer):
-                    new_image[new_point[0], new_point[1], z] = self.image[x, y, z]
 
+                new_image[y, x] = self.image[new_point[0], new_point[1]]
         return new_image
 
 
+def get_point(final_point, H):
+    upper = (final_point[0] - H[0, 2] - (H[0, 1] - H[2, 1] * final_point[0]) *
+             (final_point[1] - H[1, 2]) / (H[1, 1] - H[2, 1] * final_point[1])) * 1.0
+
+    bottom = (H[0, 0] - H[2, 0] * final_point[0] - (H[0, 1] - H[2, 1] * final_point[0]) *
+              (H[1, 0] - H[2, 0] * final_point[1]) / (H[1, 1] - H[2, 1] * final_point[1])) * 1.0
+    x = upper / bottom
+    y = ((final_point[1] - H[1, 2] - x *
+          (H[1, 0] - H[2, 0] * final_point[1])) / (H[1, 1] - H[2, 1] * final_point[1])) * 1.0
+
+    return [x, y]
+
+
 def interpolate_close_neighbor(position, matrix):
-    return [int(position[0]), int(position[1])]
+    return [int(position[0] + 0.5), int(position[1] + 0.5)]
 
 
 def interpolate_bi_lineal(position, matrix):

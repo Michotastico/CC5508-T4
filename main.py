@@ -46,7 +46,9 @@ images = [
 for image in images:
     print "Applying on image: ", image[0]
     homography = Homography(image[0], image[1], image[2])
+    print "\tClosest neighbor"
     img = homography.transform_image()
     io.imsave(image[0]+"_close.jpg", img)
-    img = homography.transform_image("bilineal")
-    io.imsave(image[0] + "_bilineal.jpg", img)
+    print "\t Bi-lineal"
+    img = homography.transform_image("bi-lineal")
+    io.imsave(image[0] + "_bi-lineal.jpg", img)

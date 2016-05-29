@@ -70,19 +70,47 @@ class Homography:
         matrix_h = self.get_homography()
 
         if interpolate == "close":
-            method = interpolate_close_neighbor
+            method = self.interpolate_close_neighbor
         else:
-            method = interpolate_bi_lineal
+            method = self.interpolate_bi_lineal
 
         for y in range(height):
             for x in range(width):
                 new_point = get_point([y, x], matrix_h)
-                new_point = method(new_point, self.image)
+
                 if new_point[1] >= width or new_point[1] < 0 or new_point[0] >= height or new_point[0] < 0:
                     continue
 
-                new_image[y, x] = self.image[new_point[0], new_point[1]]
+                new_value = method(new_point)
+                if new_point != 0:
+                    new_image[y, x] = new_value
         return new_image
+
+    def interpolate_close_neighbor(self, position):
+        height, width, layer = self.image.shape
+
+        point = [int(position[0] + 0.5), int(position[1] + 0.5)]
+        if point[1] >= width or point[1] < 0 or point[0] >= height or point[0] < 0:
+            ans = 0
+        else:
+            ans = self.image[int(position[0] + 0.5), int(position[1] + 0.5)]
+        return ans
+
+    def interpolate_bi_lineal(self, position):
+        height, width, layer = self.image.shape
+
+        p = int(position[0]) % height
+        pnext = (p + 1) % height
+        q = int(position[1]) % width
+        qnext = (q + 1) % width
+
+        a = position[0] - p
+        b = position[1] - q
+
+        ans = (1 - a) * ((1 - b) * self.image[p, q] + b * self.image[p, qnext]) + \
+              a * ((1 - b) * self.image[pnext, q] + b * self.image[pnext, qnext])
+
+        return ans
 
 
 def get_point(final_point, H):
@@ -97,16 +125,3 @@ def get_point(final_point, H):
 
     return [x, y]
 
-
-def interpolate_close_neighbor(position, matrix):
-    return [int(position[0] + 0.5), int(position[1] + 0.5)]
-
-
-def interpolate_bi_lineal(position, matrix):
-    return position
-
-
-def fix_precision(matrix):
-    ans = matrix.astype(np.float16)
-    ans = ans.astype(np.uint8)
-    return ans
